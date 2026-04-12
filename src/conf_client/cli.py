@@ -1,5 +1,5 @@
 """
-ophix_conf_client.cli
+conf_client.cli
 ~~~~~~~~~~~~~~~~~~~~~
 Command-line interface for the Ophix configuration client.
 
@@ -21,14 +21,14 @@ doctor        Diagnose local config and server connectivity
 import json
 import sys
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Dict, List, Mapping, Optional, Tuple
 import argparse
 
 import requests
 from dotenv import dotenv_values
 
-from ophix_conf_client._version import __version__
-from ophix_conf_client.core import (
+from conf_client._version import __version__
+from conf_client.core import (
     ENV_FILE_NAME,
     RESERVED_KEY_NAMES,
     RESERVED_ENV_VARS,
@@ -52,7 +52,7 @@ from ophix_conf_client.core import (
 # Formatting
 # ---------------------------------------------------------------------------
 
-def _table(rows: list[list[str]]) -> str:
+def _table(rows: List[List[str]]) -> str:
     if not rows:
         return ""
     widths = [max(len(str(r[i])) for r in rows) for i in range(len(rows[0]))]
@@ -234,7 +234,7 @@ def cmd_import(args) -> None:
         sys.exit(1)
 
 
-def _check_one(config_name: str) -> tuple[bool, str]:
+def _check_one(config_name: str) -> Tuple[bool, str]:
     try:
         fetch_config(config_name)
         return True, "OK"
@@ -413,7 +413,7 @@ def build_parser(
     prog: str,
     version: str,
     commands: Mapping[str, dict],
-    description: str | None = None,
+    description: Optional[str] = None,
 ) -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(prog=prog, description=description)
@@ -441,7 +441,7 @@ def build_parser(
     return parser
 
 
-COMMANDS: dict[str, dict] = {
+COMMANDS: Dict[str, dict] = {
     "quickstart": {
         "help": "Bootstrap a new client (set server, download CA cert, register)",
         "arguments": [

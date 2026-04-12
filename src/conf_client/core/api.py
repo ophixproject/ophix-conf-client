@@ -1,5 +1,5 @@
 """
-ophix_conf_client.core.api
+conf_client.core.api
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 Configuration and client self-management API calls.
 
@@ -22,7 +22,7 @@ import re
 import secrets
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 import urllib3
@@ -39,7 +39,7 @@ from .env import (
 from .http import build_headers, extract_server_message
 
 
-def _verify(ca_cert: str | None):
+def _verify(ca_cert: Optional[str]):
     return ca_cert if ca_cert else True
 
 
@@ -57,10 +57,10 @@ def _raise_for_status(resp: requests.Response, context: str) -> None:
 
 def fetch_config(
     name: str,
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
-) -> tuple[str, str, str]:
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
+) -> Tuple[str, str, str]:
     """
     Fetch a named configuration from the server.
 
@@ -105,10 +105,10 @@ def create_config(
     name: str,
     format: str,
     content: str,
-    description: str | None = None,
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    description: Optional[str] = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     """
     Create a new configuration on the server.
@@ -129,7 +129,7 @@ def create_config(
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "format": format,
         "content": content,
     }
@@ -150,10 +150,10 @@ def update_config(
     name: str,
     format: str,
     content: str,
-    description: str | None = None,
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    description: Optional[str] = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     """
     Overwrite an existing configuration.
@@ -165,7 +165,7 @@ def update_config(
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "format": format,
         "content": content,
     }
@@ -184,9 +184,9 @@ def update_config(
 
 def delete_config(
     name: str,
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     """
     Delete a configuration.
@@ -219,7 +219,7 @@ def get_config(env_var_name: str) -> str:
 
     This is the primary entry point for tier-2 clients::
 
-        from ophix_conf_client import get_config
+        from conf_client import get_config
 
         nginx_conf = get_config("NGINX_CONFIG_NAME")
         # nginx_conf is the raw config string
@@ -264,9 +264,9 @@ def get_config(env_var_name: str) -> str:
 # ---------------------------------------------------------------------------
 
 def fetch_client_info(
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
@@ -278,10 +278,10 @@ def fetch_client_info(
 
 
 def update_client(
-    deployment_ref: str | None = None,
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    deployment_ref: Optional[str] = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
@@ -290,7 +290,7 @@ def update_client(
     if not venv_path:
         raise RuntimeError("Cannot detect virtual environment.")
 
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "venv_name": venv_path.name,
         "venv_path": str(venv_path.resolve()),
     }
@@ -309,9 +309,9 @@ def update_client(
 
 
 def rotate_token(
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> str:
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
@@ -330,9 +330,9 @@ def rotate_token(
 
 def register_client(
     name: str,
-    deployment_ref: str | None = None,
-    server_url: str | None = None,
-    ca_cert: str | None = None,
+    deployment_ref: Optional[str] = None,
+    server_url: Optional[str] = None,
+    ca_cert: Optional[str] = None,
 ) -> dict:
     server_url, _token, ca_cert = resolve_server_config(
         server_url,
@@ -361,8 +361,8 @@ def register_client(
 
 
 def download_ca_cert(
-    server_url: str | None = None,
-    dest_dir: Path | None = None,
+    server_url: Optional[str] = None,
+    dest_dir: Optional[Path] = None,
 ) -> Path:
     server_url, _token, current_ca_cert = resolve_server_config(
         server_url,

@@ -1,5 +1,5 @@
 """
-ophix_conf_client.core.env
+conf_client.core.env
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 Environment configuration resolution for the Ophix configuration client.
 
@@ -16,7 +16,7 @@ coexist with other application environment variables without collision.
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional, Set
 
 from dotenv import load_dotenv, find_dotenv, set_key
 
@@ -26,20 +26,20 @@ from dotenv import load_dotenv, find_dotenv, set_key
 
 ENV_FILE_NAME = ".conf.env"
 
-RESERVED_KEY_NAMES: dict[str, str] = {
+RESERVED_KEY_NAMES: Dict[str, str] = {
     "SERVER":    "CONFSERVER_URL",
     "API_TOKEN": "CONFSERVER_API_TOKEN",
     "CA_CERT":   "CONFSERVER_CA_CERT",
 }
 
-RESERVED_ENV_VARS: set[str] = set(RESERVED_KEY_NAMES.values())
+RESERVED_ENV_VARS: Set[str] = set(RESERVED_KEY_NAMES.values())
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _env_get(key: str) -> str | None:
+def _env_get(key: str) -> Optional[str]:
     return os.getenv(RESERVED_KEY_NAMES.get(key, key))
 
 
@@ -98,13 +98,13 @@ def set_env_variable(var: str, value: str, verbose: bool = True) -> None:
 
 
 def resolve_server_config(
-    server_url: str | None = None,
-    api_token: str | None = None,
-    ca_cert: str | None = None,
+    server_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+    ca_cert: Optional[str] = None,
     *,
     exit_on_error: bool = True,
     return_env_path: bool = False,
-    ignore_missing: list[str] | None = None,
+    ignore_missing: Optional[List[str]] = None,
 ) -> tuple:
     """
     Resolve server connection settings from arguments, env file, or environment.
@@ -117,7 +117,7 @@ def resolve_server_config(
     if ignore_missing is None:
         ignore_missing = []
 
-    env_path_found: str | None = None
+    env_path_found: Optional[str] = None
     conf_env = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
     if conf_env:
         load_dotenv(conf_env)
@@ -127,7 +127,7 @@ def resolve_server_config(
     api_token  = api_token  or _env_get("API_TOKEN")
     ca_cert    = ca_cert    or _env_get("CA_CERT")
 
-    errors: list[str] = []
+    errors: List[str] = []
 
     token_var  = RESERVED_KEY_NAMES["API_TOKEN"]
     server_var = RESERVED_KEY_NAMES["SERVER"]

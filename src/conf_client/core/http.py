@@ -1,5 +1,5 @@
 """
-ophix_conf_client.core.http
+conf_client.core.http
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 HTTP plumbing for the Ophix configuration client.
 """
@@ -7,9 +7,9 @@ HTTP plumbing for the Ophix configuration client.
 import getpass
 import platform
 import sys
-from typing import Optional
+from typing import Dict, Optional
 
-from ophix_conf_client._version import __version__
+from conf_client._version import __version__
 from .env import in_venv
 
 try:
@@ -39,7 +39,7 @@ def _detect_invocation() -> str:
 
 def build_headers(api_token: Optional[str] = None) -> dict:
     """Build the standard X-Ophix-* diagnostic headers."""
-    headers: dict[str, str] = {
+    headers: Dict[str, str] = {
         "X-Ophix-Client-Version":  __version__,
         "X-Ophix-Python-Version":  (
             f"{sys.version_info.major}."

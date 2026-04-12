@@ -1,5 +1,5 @@
 """
-ophix_conf_client.core
+conf_client.core
 ~~~~~~~~~~~~~~~~~~~~~~
 Public API surface of the core subpackage.
 """
