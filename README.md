@@ -1,9 +1,10 @@
 # ophix-conf-client
 
-Python client for **Ophix Configuration Servers** (`ophix-conf`).
+Python client for [ophix-confs](https://github.com/ophixproject/ophix-confs) configuration servers.
 
-Provides a CLI for operators and a library API for automation scripts
-and tier-2 clients.
+Provides a CLI for operators and an importable library for automation scripts
+and Tier 2 clients. Fetches named configuration snippets (YAML, JSON, XML, INI,
+TOML, .env, raw) verbatim from the server.
 
 ---
 
@@ -33,7 +34,7 @@ conf-client import --input-file nginx.conf --name nginx_upstream --format raw
 # Import with format inferred from extension
 conf-client import --input-file app_config.yaml --name app_config
 
-# Check all configurations in .conf.env
+# Check all configurations mapped in .conf.env
 conf-client check --all
 
 # Diagnose config and connectivity
@@ -44,30 +45,31 @@ conf-client doctor
 
 ## Configuration
 
-Settings are stored in `.conf.env` in your project root (mode 600).
+Settings are stored in `.conf.env` (mode 600).
 
 | Variable | Purpose |
-|---|---|
+| --- | --- |
 | `CONFSERVER_URL` | Base URL of the configuration server |
 | `CONFSERVER_API_TOKEN` | 64-char hex API token (set by `register`) |
 | `CONFSERVER_CA_CERT` | Path to CA certificate (set by `download ca-cert`) |
 
-Additional keys in `.conf.env` are treated as configuration name mappings
-used by `check --all`.
+Additional keys in `.conf.env` are treated as configuration name mappings used by
+`check --all` — each key maps an environment variable name to a configuration name
+on the server.
 
 ---
 
 ## CLI reference
 
-```
+```text
 conf-client quickstart <server_url> <client_name> [--deployment-ref ...]
-conf-client fetch <n> [--format-info]
-conf-client register <n> [deployment_ref]
+conf-client fetch <name> [--format-info]
+conf-client register <name> [deployment_ref]
 conf-client update [--deployment-ref ...]
 conf-client set {server|ca-cert|token} <value>
 conf-client download ca-cert
 conf-client import --input-file <file> [--name <n>|--env <VAR>] [--format <fmt>] [--overwrite]
-conf-client check {--all|--var <VAR>|--name <n>} [--verbose]
+conf-client check {--all|--var <VAR>|--name <name>} [--verbose]
 conf-client info
 conf-client rotate-token
 conf-client doctor
@@ -75,13 +77,13 @@ conf-client doctor
 
 ---
 
-## Python API — tier-2 clients
+## Python API — Tier 2 clients
 
 ```python
-from ophix_conf_client import get_config
+from conf_client.core import get_config
 
-# Reads config name from env var, fetches from server,
-# returns raw content string.  Calls sys.exit(1) on failure.
+# Reads config name from the named env var, fetches from server,
+# returns raw content string. Calls sys.exit(1) on failure.
 nginx_conf = get_config("NGINX_CONFIG_NAME")
 
 # Write directly to file
@@ -92,7 +94,7 @@ with open("/etc/nginx/conf.d/upstream.conf", "w") as f:
 Full CRUD:
 
 ```python
-from ophix_conf_client import (
+from conf_client.core import (
     fetch_config,    # returns (content, format_name, updated_at)
     create_config,
     update_config,
@@ -100,12 +102,12 @@ from ophix_conf_client import (
 )
 ```
 
+`fetch_config` returns a `(content, format_name, updated_at)` tuple rather than a dict,
+since the content is raw text. The format name and timestamp come from response headers.
+`get_config` returns the raw content string directly.
+
 ---
 
-## Key difference from ophix-cred-client
+## Server
 
-`fetch_config` returns a `(content, format_name, updated_at)` tuple
-rather than a dict, since the content is raw text rather than JSON.
-The format name and timestamp come from response headers.
-
-`get_config` returns the raw content string directly (not a dict).
+This client connects to [ophix-confs](https://github.com/ophixproject/ophix-confs).
