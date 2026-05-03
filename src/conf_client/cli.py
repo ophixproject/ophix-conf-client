@@ -88,9 +88,6 @@ def cmd_quickstart(args) -> None:
 def cmd_fetch(args) -> None:
     try:
         content, fmt, updated = fetch_config(args.name)
-        if args.format_info:
-            print(f"# Format: {fmt}  Updated: {updated}")
-        print(content)
     except requests.HTTPError as exc:
         print(f"Failed to fetch '{args.name}': {exc}")
         if exc.response is not None:
@@ -99,6 +96,20 @@ def cmd_fetch(args) -> None:
     except Exception as exc:
         print(f"Unexpected error: {exc}")
         sys.exit(1)
+
+    output_file = getattr(args, "output_file", None)
+
+    if output_file and output_file != "-":
+        path = Path(output_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        if args.format_info:
+            print(f"Format: {fmt}  Updated: {updated}")
+        print(f"Saved to {path}")
+    else:
+        if args.format_info:
+            print(f"# Format: {fmt}  Updated: {updated}")
+        print(content)
 
 
 def _do_register(name: str, deployment_ref: Optional[str]) -> None:
@@ -472,13 +483,20 @@ COMMANDS: Dict[str, dict] = {
     },
 
     "fetch": {
-        "help": "Fetch a named configuration and print content",
+        "help": "Fetch a named configuration and print or save content",
         "arguments": [
             {"name": "name", "help": "Configuration name"},
             {
+                "name": "--output-file",
+                "dest": "output_file",
+                "metavar": "PATH",
+                "help": "Write content to this file instead of stdout. Use - for explicit stdout.",
+                "required": False,
+            },
+            {
                 "name": "--format-info",
                 "action": "store_true",
-                "help": "Print format and updated timestamp as a comment before content",
+                "help": "Print format and updated timestamp (as comment when writing to stdout, as plain text when writing to a file)",
             },
         ],
         "handler": cmd_fetch,

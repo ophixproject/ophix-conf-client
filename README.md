@@ -63,7 +63,7 @@ on the server.
 
 ```text
 conf-client quickstart <server_url> <client_name> [--deployment-ref ...]
-conf-client fetch <name> [--format-info]
+conf-client fetch <name> [--output-file <path>] [--format-info]
 conf-client register <name> [deployment_ref]
 conf-client update [--deployment-ref ...]
 conf-client set {server|ca-cert|token} <value>
@@ -74,6 +74,10 @@ conf-client info
 conf-client rotate-token
 conf-client doctor
 ```
+
+### fetch
+
+`--output-file <path>` writes the content directly to a file instead of stdout. Parent directories are created automatically. Use `-` as the path for explicit stdout. When writing to a file, `--format-info` prints format and timestamp to stdout separately rather than embedding them in the file.
 
 ### import
 
