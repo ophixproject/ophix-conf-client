@@ -130,7 +130,7 @@ def create_config(
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
     payload: Dict[str, Any] = {
-        "format": format,
+        "format_name": format,
         "content": content,
     }
     if description is not None:
@@ -166,7 +166,7 @@ def update_config(
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
     payload: Dict[str, Any] = {
-        "format": format,
+        "format_name": format,
         "content": content,
     }
     if description is not None:
