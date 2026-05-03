@@ -574,8 +574,8 @@ COMMANDS: Dict[str, dict] = {
     "import": {
         "help": "Create or update a configuration from a file",
         "arguments": [
-            {"name": "--name", "help": "Configuration name"},
-            {"name": "--var", "help": "Env var in .conf.env holding the configuration name"},
+            {"name": "--name", "metavar": "NAME", "help": "Configuration name"},
+            {"name": "--var", "metavar": "ENV_VAR", "help": "Env var in .conf.env holding the configuration name"},
             {
                 "name": "--input-file",
                 "required": True,
@@ -600,7 +600,7 @@ COMMANDS: Dict[str, dict] = {
                 "arguments": [
                     {"name": "--all", "action": "store_true", "help": "Check all configs in env file"},
                     {"name": "--var", "metavar": "ENV_VAR", "help": "Check config named by this env var"},
-                    {"name": "--name", "metavar": "CONFIG_NAME", "help": "Check config by name"},
+                    {"name": "--name", "metavar": "NAME", "help": "Check config by name"},
                 ],
             }
         ],
