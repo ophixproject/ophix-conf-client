@@ -86,8 +86,15 @@ def cmd_quickstart(args) -> None:
 
 
 def cmd_fetch(args) -> None:
+    name = args.name
+    if args.var:
+        _, _, _, dotenv_path = resolve_server_config(return_env_path=True)
+        name = dotenv_values(dotenv_path).get(args.var)
+        if not name:
+            print(f"Error: {args.var} is not set in {ENV_FILE_NAME}")
+            sys.exit(1)
     try:
-        content, fmt, updated = fetch_config(args.name)
+        content, fmt, updated = fetch_config(name)
     except requests.HTTPError as exc:
         print(f"Failed to fetch '{args.name}': {exc}")
         if exc.response is not None:
@@ -198,23 +205,23 @@ def cmd_import(args) -> None:
     _, token, ca_cert, dotenv_path = resolve_server_config(return_env_path=True)
 
     name = args.name
-    if args.name and args.env_key:
+    if args.name and args.var:
         env_vars = dotenv_values(dotenv_path)
-        existing = env_vars.get(args.env_key)
+        existing = env_vars.get(args.var)
         if existing is not None and existing != args.name:
             print(
                 "Error: {} is already mapped to '{}' in {}. "
                 "Use --name {} to match, or edit {} manually.".format(
-                    args.env_key, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME
+                    args.var, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME
                 )
             )
             sys.exit(1)
         if existing is None:
-            set_env_variable(args.env_key, args.name)
-            print("Mapped {}={} in {}".format(args.env_key, args.name, ENV_FILE_NAME))
-    elif args.env_key:
+            set_env_variable(args.var, args.name)
+            print("Mapped {}={} in {}".format(args.var, args.name, ENV_FILE_NAME))
+    elif args.var:
         env_vars = dotenv_values(dotenv_path)
-        name = env_vars.get(args.env_key)
+        name = env_vars.get(args.var)
 
     if not name:
         print("Configuration name not specified (use --name or --env)")
@@ -488,8 +495,16 @@ COMMANDS: Dict[str, dict] = {
 
     "fetch": {
         "help": "Fetch a named configuration and print or save content",
+        "mutually_exclusive_groups": [
+            {
+                "required": True,
+                "arguments": [
+                    {"name": "--name", "metavar": "NAME", "help": "Configuration name"},
+                    {"name": "--var", "metavar": "ENV_VAR", "help": "Env var in .conf.env holding the configuration name"},
+                ],
+            }
+        ],
         "arguments": [
-            {"name": "name", "help": "Configuration name"},
             {
                 "name": "--output-file",
                 "dest": "output_file",
@@ -560,7 +575,7 @@ COMMANDS: Dict[str, dict] = {
         "help": "Create or update a configuration from a file",
         "arguments": [
             {"name": "--name", "help": "Configuration name"},
-            {"name": "--env", "dest": "env_key", "help": "Env var holding configuration name"},
+            {"name": "--var", "help": "Env var in .conf.env holding the configuration name"},
             {
                 "name": "--input-file",
                 "required": True,

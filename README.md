@@ -63,12 +63,12 @@ on the server.
 
 ```text
 conf-client quickstart <server_url> <client_name> [--deployment-ref ...]
-conf-client fetch <name> [--output-file <path>] [--format-info]
+conf-client fetch {--name <n>|--var <VAR>} [--output-file <path>] [--format-info]
 conf-client register <name> [deployment_ref]
 conf-client update [--deployment-ref ...]
 conf-client set {server|ca-cert|token} <value>
 conf-client download ca-cert
-conf-client import --input-file <file> [--name <n>] [--env <VAR>] [--format <fmt>] [--overwrite]
+conf-client import --input-file <file> [--name <n>] [--var <VAR>] [--format <fmt>] [--overwrite]
 conf-client check {--all|--var <VAR>|--name <name>} [--verbose]
 conf-client info
 conf-client rotate-token
@@ -77,6 +77,11 @@ conf-client doctor
 
 ### fetch
 
+| Usage | What happens |
+| --- | --- |
+| `--name <n>` | Fetches the configuration named `<n>` directly |
+| `--var <VAR>` | Reads the configuration name from `<VAR>` in `.conf.env`, then fetches it |
+
 `--output-file <path>` writes the content directly to a file instead of stdout. Parent directories are created automatically. Use `-` as the path for explicit stdout. When writing to a file, `--format-info` prints format and timestamp to stdout separately rather than embedding them in the file.
 
 ### import
@@ -84,8 +89,8 @@ conf-client doctor
 | Usage | What happens |
 | --- | --- |
 | `--name <n>` only | Imports configuration named `<n>`. No `.conf.env` changes. |
-| `--env <VAR>` only | Reads the configuration name from `<VAR>` in `.conf.env`. Fails if not set. |
-| `--name <n> --env <VAR>` | Imports `<n>` and writes `<VAR>=<n>` to `.conf.env`. Fails if `<VAR>` is already mapped to a different name. |
+| `--var <VAR>` only | Reads the configuration name from `<VAR>` in `.conf.env`. Fails if not set. |
+| `--name <n> --var <VAR>` | Imports `<n>` and writes `<VAR>=<n>` to `.conf.env`. Fails if `<VAR>` is already mapped to a different name. |
 
 Add `--overwrite` to update an existing configuration.
 
