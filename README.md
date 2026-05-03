@@ -68,12 +68,22 @@ conf-client register <name> [deployment_ref]
 conf-client update [--deployment-ref ...]
 conf-client set {server|ca-cert|token} <value>
 conf-client download ca-cert
-conf-client import --input-file <file> [--name <n>|--env <VAR>] [--format <fmt>] [--overwrite]
+conf-client import --input-file <file> [--name <n>] [--env <VAR>] [--format <fmt>] [--overwrite]
 conf-client check {--all|--var <VAR>|--name <name>} [--verbose]
 conf-client info
 conf-client rotate-token
 conf-client doctor
 ```
+
+### import
+
+| Usage | What happens |
+| --- | --- |
+| `--name <n>` only | Imports configuration named `<n>`. No `.conf.env` changes. |
+| `--env <VAR>` only | Reads the configuration name from `<VAR>` in `.conf.env`. Fails if not set. |
+| `--name <n> --env <VAR>` | Imports `<n>` and writes `<VAR>=<n>` to `.conf.env`. Fails if `<VAR>` is already mapped to a different name. |
+
+Add `--overwrite` to update an existing configuration.
 
 ---
 

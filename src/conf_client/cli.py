@@ -183,7 +183,21 @@ def cmd_import(args) -> None:
     _, token, ca_cert, dotenv_path = resolve_server_config(return_env_path=True)
 
     name = args.name
-    if args.env_key:
+    if args.name and args.env_key:
+        env_vars = dotenv_values(dotenv_path)
+        existing = env_vars.get(args.env_key)
+        if existing is not None and existing != args.name:
+            print(
+                "Error: {} is already mapped to '{}' in {}. "
+                "Use --name {} to match, or edit {} manually.".format(
+                    args.env_key, existing, ENV_FILE_NAME, existing, ENV_FILE_NAME
+                )
+            )
+            sys.exit(1)
+        if existing is None:
+            set_env_variable(args.env_key, args.name)
+            print("Mapped {}={} in {}".format(args.env_key, args.name, ENV_FILE_NAME))
+    elif args.env_key:
         env_vars = dotenv_values(dotenv_path)
         name = env_vars.get(args.env_key)
 
