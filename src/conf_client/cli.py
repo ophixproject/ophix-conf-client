@@ -101,8 +101,12 @@ def cmd_fetch(args) -> None:
 
     if output_file and output_file != "-":
         path = Path(output_file)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        except OSError as exc:
+            print(f"Error: could not write to {path}: {exc.strerror}")
+            sys.exit(1)
         if args.format_info:
             print(f"Format: {fmt}  Updated: {updated}")
         print(f"Saved to {path}")
