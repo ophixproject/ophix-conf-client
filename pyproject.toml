@@ -18,7 +18,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "distro>=1.8",
     "urllib3>=2.0",
-    "venv-cmds>=2026.05.01.04",
+
 ]
 
 [project.scripts]

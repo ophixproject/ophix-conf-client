@@ -11,8 +11,11 @@ TOML, .env, raw) verbatim from the server.
 ## Installation
 
 ```bash
-pip install ophix-conf-client
+pip install ophix-conf-client venv-cmds
 ```
+
+`venv-cmds` is optional but recommended — it provides `venv-cmds list` to discover all
+commands available in the venv and `venv-cmds check_updates` to check for new releases.
 
 ---
 
