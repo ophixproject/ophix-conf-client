@@ -18,23 +18,20 @@ download_ca_cert(...)             GET  /api/server/ca-cert/
 """
 
 import os
-import re
 import secrets
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import requests
-import urllib3
 
+from client_core.core import api_delete, api_get, api_patch, api_post, api_put
 from .env import (
     RESERVED_KEY_NAMES,
     ENV_FILE_NAME,
     resolve_server_config,
     in_venv,
     determine_deployment_ref,
-    set_env_variable,
-    find_project_root,
 )
 from .http import build_headers, extract_server_message
 
@@ -85,7 +82,7 @@ def fetch_config(
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
-    resp = requests.get(url, headers=build_headers(api_token), verify=_verify(ca_cert))
+    resp = api_get(url, headers=build_headers(api_token), verify=_verify(ca_cert))
 
     if resp.status_code == 404:
         raise requests.HTTPError(
@@ -136,7 +133,7 @@ def create_config(
     if description is not None:
         payload["description"] = description
 
-    resp = requests.post(
+    resp = api_post(
         url,
         headers=build_headers(api_token),
         json=payload,
@@ -172,7 +169,7 @@ def update_config(
     if description is not None:
         payload["description"] = description
 
-    resp = requests.put(
+    resp = api_put(
         url,
         headers=build_headers(api_token),
         json=payload,
@@ -199,7 +196,7 @@ def delete_config(
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
-    resp = requests.delete(
+    resp = api_delete(
         url,
         headers=build_headers(api_token),
         verify=_verify(ca_cert),
@@ -272,7 +269,7 @@ def fetch_client_info(
         server_url, api_token, ca_cert
     )
     url = f"{server_url.rstrip('/')}/api/client/self/"
-    resp = requests.get(url, headers=build_headers(api_token), verify=_verify(ca_cert))
+    resp = api_get(url, headers=build_headers(api_token), verify=_verify(ca_cert))
     _raise_for_status(resp, "Failed to fetch client info")
     return resp.json()
 
@@ -298,7 +295,7 @@ def update_client(
         payload["deployment_ref"] = deployment_ref
 
     url = f"{server_url.rstrip('/')}/api/client/self/update/"
-    resp = requests.patch(
+    resp = api_patch(
         url,
         headers=build_headers(api_token),
         json=payload,
@@ -318,7 +315,7 @@ def rotate_token(
     )
     new_token = secrets.token_hex(32)
     url = f"{server_url.rstrip('/')}/api/client/self/rotate-token/"
-    resp = requests.post(
+    resp = api_post(
         url,
         headers=build_headers(api_token),
         json={"new_token": new_token},
@@ -350,7 +347,7 @@ def register_client(
         "venv_name": venv_path.name,
         "venv_path": str(venv_path.resolve()),
     }
-    resp = requests.post(
+    resp = api_post(
         f"{server_url.rstrip('/')}/api/register/",
         headers=build_headers(),
         json=payload,
@@ -360,39 +357,3 @@ def register_client(
     return resp.json()
 
 
-def download_ca_cert(
-    server_url: Optional[str] = None,
-    dest_dir: Optional[Path] = None,
-) -> Path:
-    server_url, _token, current_ca_cert = resolve_server_config(
-        server_url,
-        ignore_missing=[
-            RESERVED_KEY_NAMES["API_TOKEN"],
-            RESERVED_KEY_NAMES["CA_CERT"],
-        ],
-    )
-    if current_ca_cert and Path(current_ca_cert).exists():
-        raise FileExistsError(
-            f"CA cert already exists at {current_ca_cert}. "
-            f"Remove or update {RESERVED_KEY_NAMES['CA_CERT']} in {ENV_FILE_NAME} first."
-        )
-
-    url = f"{server_url.rstrip('/')}/api/server/ca-cert/"
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    resp = requests.get(url, headers=build_headers(), verify=False)
-    _raise_for_status(resp, "Failed to download CA certificate")
-
-    filename = "ca-cert.pem"
-    cd = resp.headers.get("Content-Disposition", "")
-    if cd:
-        m = re.search(r'filename="?([^"]+)"?', cd)
-        if m:
-            filename = m.group(1)
-
-    save_dir = dest_dir or (find_project_root() / ".conf")
-    save_dir.mkdir(exist_ok=True)
-    cert_path = save_dir / filename
-    cert_path.write_bytes(resp.content)
-
-    set_env_variable(RESERVED_KEY_NAMES["CA_CERT"], str(cert_path), verbose=False)
-    return cert_path

@@ -28,7 +28,6 @@ from .api import (
     update_client,
     rotate_token,
     register_client,
-    download_ca_cert,
 )
 
 __all__ = [
@@ -38,5 +37,5 @@ __all__ = [
     "build_headers",
     "fetch_config", "create_config", "update_config",
     "delete_config", "get_config", "fetch_client_info",
-    "update_client", "rotate_token", "register_client", "download_ca_cert",
+    "update_client", "rotate_token", "register_client",
 ]
