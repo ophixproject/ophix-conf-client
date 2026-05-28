@@ -1,5 +1,5 @@
 from client_core.config import ClientConfig
-from conf_client._version import __version__
+from conf_client._version import __version__, __package_name__
 
 CLIENT_CONFIG = ClientConfig(
     prog="conf-client",
@@ -10,4 +10,5 @@ CLIENT_CONFIG = ClientConfig(
     ca_cert_key="CONFSERVER_CA_CERT",
     client_name="conf",
     version=__version__,
+    package_name=__package_name__,
 )
