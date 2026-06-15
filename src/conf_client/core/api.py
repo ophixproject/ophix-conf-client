@@ -25,7 +25,8 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 
-from client_core.core import api_delete, api_get, api_patch, api_post, api_put
+from client_core.core import api_delete, api_get, api_patch, api_post, api_put, set_active_config
+from conf_client._config import CLIENT_CONFIG
 from .env import (
     RESERVED_KEY_NAMES,
     ENV_FILE_NAME,
@@ -77,6 +78,7 @@ def fetch_config(
     if not name or not str(name).strip():
         raise ValueError("Configuration name must not be empty")
 
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
     )
@@ -157,6 +159,7 @@ def update_config(
 
     Requires ``can_update`` on the ClientConfiguration join record.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
     )
@@ -191,6 +194,7 @@ def delete_config(
     Requires ``can_delete`` on the join record **and**
     ``ENABLE_ARTIFACT_DELETE=true`` on the server.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
     )
@@ -265,6 +269,7 @@ def fetch_client_info(
     api_token: Optional[str] = None,
     ca_cert: Optional[str] = None,
 ) -> dict:
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
     )
@@ -280,6 +285,7 @@ def update_client(
     api_token: Optional[str] = None,
     ca_cert: Optional[str] = None,
 ) -> dict:
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
         server_url, api_token, ca_cert
     )
