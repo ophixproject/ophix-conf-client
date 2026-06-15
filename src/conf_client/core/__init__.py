@@ -8,13 +8,14 @@ from .env import (
     ENV_FILE_NAME,
     RESERVED_KEY_NAMES,
     RESERVED_ENV_VARS,
-    resolve_server_config,
     in_venv,
     ensure_env_file,
     set_env_variable,
     find_project_root,
     determine_deployment_ref,
 )
+
+from client_core.core import resolve_server_config
 
 from .http import build_headers
 

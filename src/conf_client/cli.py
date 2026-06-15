@@ -51,7 +51,7 @@ def cmd_fetch(args):
     # type: (object) -> None
     name = args.name
     if args.var:
-        _, _, _, dotenv_path = resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         name = dotenv_values(dotenv_path).get(args.var)
         if not name:
             print("Error: {} is not set in {}".format(args.var, ENV_FILE_NAME))
@@ -88,7 +88,7 @@ def cmd_fetch(args):
 
 def cmd_import(args):
     # type: (object) -> None
-    _, token, ca_cert, dotenv_path = resolve_server_config(return_env_path=True)
+    _, token, ca_cert, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
 
     name = args.name
     if args.name and args.var:
@@ -173,7 +173,7 @@ def _check_one(config_name):
 def cmd_check(args):
     # type: (object) -> None
     if args.all:
-        _, _, _, dotenv_path = resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         env_vars = dotenv_values(dotenv_path)
         keys = sorted(k for k in env_vars if k not in RESERVED_ENV_VARS)
         if not keys:
@@ -192,7 +192,7 @@ def cmd_check(args):
             rows.append(row)
         print(_table(rows))
     elif args.var:
-        _, _, _, dotenv_path = resolve_server_config(return_env_path=True)
+        _, _, _, dotenv_path = resolve_server_config(CLIENT_CONFIG, return_env_path=True)
         env_vars = dotenv_values(dotenv_path)
         if args.var not in env_vars:
             print("Key '{}' not found in {}".format(args.var, dotenv_path))

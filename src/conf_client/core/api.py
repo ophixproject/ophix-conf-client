@@ -25,12 +25,11 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 
-from client_core.core import api_delete, api_get, api_patch, api_post, api_put, set_active_config
+from client_core.core import api_delete, api_get, api_patch, api_post, api_put, resolve_server_config, set_active_config
 from conf_client._config import CLIENT_CONFIG
 from .env import (
     RESERVED_KEY_NAMES,
     ENV_FILE_NAME,
-    resolve_server_config,
     in_venv,
     determine_deployment_ref,
 )
@@ -80,7 +79,7 @@ def fetch_config(
 
     set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
@@ -123,8 +122,9 @@ def create_config(
     description
         Optional human-readable description.
     """
+    set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
@@ -161,7 +161,7 @@ def update_config(
     """
     set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
@@ -196,7 +196,7 @@ def delete_config(
     """
     set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
 
     url = f"{server_url.rstrip('/')}/api/configs/{name}/"
@@ -271,7 +271,7 @@ def fetch_client_info(
 ) -> dict:
     set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
     url = f"{server_url.rstrip('/')}/api/client/self/"
     resp = api_get(url, headers=build_headers(api_token), verify=_verify(ca_cert))
@@ -287,7 +287,7 @@ def update_client(
 ) -> dict:
     set_active_config(CLIENT_CONFIG)
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
     venv_path = in_venv()
     if not venv_path:
@@ -317,7 +317,7 @@ def rotate_token(
     ca_cert: Optional[str] = None,
 ) -> str:
     server_url, api_token, ca_cert = resolve_server_config(
-        server_url, api_token, ca_cert
+        CLIENT_CONFIG, server_url, api_token, ca_cert
     )
     new_token = secrets.token_hex(32)
     url = f"{server_url.rstrip('/')}/api/client/self/rotate-token/"
@@ -338,8 +338,8 @@ def register_client(
     ca_cert: Optional[str] = None,
 ) -> dict:
     server_url, _token, ca_cert = resolve_server_config(
-        server_url,
-        ignore_missing=[RESERVED_KEY_NAMES["API_TOKEN"]],
+        CLIENT_CONFIG, server_url,
+        ignore_missing_keys=[RESERVED_KEY_NAMES["API_TOKEN"]],
     )
     venv_path = in_venv()
     if not venv_path:
