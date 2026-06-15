@@ -118,10 +118,15 @@ def resolve_server_config(
         ignore_missing = []
 
     env_path_found: Optional[str] = None
-    conf_env = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
-    if conf_env:
-        load_dotenv(conf_env)
-        env_path_found = conf_env
+    candidate = find_project_root() / ENV_FILE_NAME
+    if candidate.exists():
+        load_dotenv(str(candidate))
+        env_path_found = str(candidate)
+    elif not in_venv():
+        conf_env = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
+        if conf_env:
+            load_dotenv(conf_env)
+            env_path_found = conf_env
 
     server_url = server_url or _env_get("SERVER")
     api_token  = api_token  or _env_get("API_TOKEN")
