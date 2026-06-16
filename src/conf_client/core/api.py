@@ -29,7 +29,6 @@ from client_core.core import api_delete, api_get, api_patch, api_post, api_put, 
 from conf_client._config import CLIENT_CONFIG
 from .env import (
     RESERVED_KEY_NAMES,
-    ENV_FILE_NAME,
     in_venv,
     determine_deployment_ref,
 )
@@ -241,10 +240,15 @@ def get_config(env_var_name: str) -> str:
     Calls sys.exit(1) on any failure so tier-2 callers don't need to
     handle exceptions.
     """
-    from dotenv import find_dotenv, load_dotenv
-    conf_env = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
-    if conf_env:
-        load_dotenv(conf_env)
+    set_active_config(CLIENT_CONFIG)
+    resolve_server_config(
+        CLIENT_CONFIG,
+        ignore_missing_keys=[
+            CLIENT_CONFIG.server_url_key,
+            CLIENT_CONFIG.api_token_key,
+            CLIENT_CONFIG.ca_cert_key,
+        ],
+    )
 
     config_name = os.getenv(env_var_name)
     if not config_name:
