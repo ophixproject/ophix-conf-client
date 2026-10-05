@@ -14,13 +14,13 @@ import requests
 from dotenv import dotenv_values
 
 from client_core.commands import build_commands
+from client_core.core import resolve_server_config
 from client_core.parser import make_main
 
 from conf_client._config import CLIENT_CONFIG
 from conf_client.core import (
     ENV_FILE_NAME,
     RESERVED_ENV_VARS,
-    resolve_server_config,
     set_env_variable,
     fetch_config,
     create_config,

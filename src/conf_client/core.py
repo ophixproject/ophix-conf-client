@@ -3,209 +3,255 @@ conf_client.core
 ~~~~~~~~~~~~~~~~
 Core library for the Ophix configuration client.
 
-Provides functions for fetching and managing configurations from an Ophix
-configuration server. Import from here in Tier 2 clients:
+Provides functions for fetching, creating, updating, and deleting
+configurations from an Ophix configuration server. Import from here
+in Tier 2 clients:
 
-    from conf_client.core import get_conf, fetch_config
+    from conf_client import get_config
 """
 
 import os
 import sys
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import requests
-from dotenv import find_dotenv, load_dotenv, set_key
+from dotenv import set_key
 
-from client_core.core import api_delete, api_get, api_post, api_put, build_client_headers, set_active_config
+from client_core.core import (
+    api_delete,
+    api_get,
+    api_post,
+    api_put,
+    build_client_headers,
+    ensure_env_file,
+    resolve_server_config,
+    set_active_config,
+)
 from conf_client._config import CLIENT_CONFIG
 
 ENV_FILE_NAME = ".conf.env"
 
-RESERVED_ENV_VARS = {
-    "CONFSERVER_URL",
-    "CONFSERVER_CA_CERT",
-    "CONFSERVER_API_TOKEN",
+RESERVED_KEY_NAMES = {
+    "SERVER":    "CONFSERVER_URL",
+    "API_TOKEN": "CONFSERVER_API_TOKEN",
+    "CA_CERT":   "CONFSERVER_CA_CERT",
 }
 
-
-def _find_project_root():
-    # type: () -> Path
-    cwd = Path.cwd()
-    if hasattr(sys, "real_prefix") or sys.prefix != sys.base_prefix:
-        return Path(sys.prefix).parent
-    for parent in [cwd] + list(cwd.parents):
-        if (parent / "requirements.txt").exists() or (parent / ".git").exists() or (parent / ".env").exists():
-            return parent
-    return cwd
+RESERVED_ENV_VARS = set(RESERVED_KEY_NAMES.values())
 
 
-def resolve_server_config(
-    server_url=None,       # type: Optional[str]
-    api_token=None,        # type: Optional[str]
-    ca_cert=None,          # type: Optional[str]
-    exit_on_error=True,    # type: bool
-    return_env_path=False, # type: bool
-):
-    # type: (...) -> tuple
-    """Resolve server config from arguments, .conf.env, or environment."""
-    env_path_found = None
-    project_root = _find_project_root()
-    candidate = project_root / ENV_FILE_NAME
-    if candidate.exists():
-        load_dotenv(str(candidate))
-        env_path_found = str(candidate)
-    else:
-        found = find_dotenv(filename=ENV_FILE_NAME, usecwd=True)
-        if found:
-            load_dotenv(found)
-            env_path_found = found
-
-    server_url = server_url or os.getenv("CONFSERVER_URL")
-    api_token = api_token or os.getenv("CONFSERVER_API_TOKEN")
-    ca_cert = ca_cert or os.getenv("CONFSERVER_CA_CERT")
-
-    errors = []
-    if not server_url:
-        errors.append("Server URL not set (CONFSERVER_URL)")
-    if not api_token or len(api_token) != 64:
-        errors.append("API token missing or invalid (CONFSERVER_API_TOKEN — must be 64 hex chars)")
-    if ca_cert:
-        ca_path = Path(ca_cert)
-        if not ca_path.exists():
-            errors.append("CA cert file not found at {}".format(ca_cert))
-        else:
-            ca_cert = str(ca_path.resolve())
-
-    if errors:
-        if exit_on_error:
-            print("Error resolving server config:\n{}".format("\n".join(errors)))
-            sys.exit(1)
-        else:
-            raise ValueError("\n".join(errors))
-
-    if return_env_path:
-        return server_url, api_token, ca_cert, env_path_found
-    return server_url, api_token, ca_cert
-
-
-def set_env_variable(key, value):
-    # type: (str, str) -> None
-    """Write a key=value mapping into .conf.env."""
-    project_root = _find_project_root()
-    env_path = project_root / ENV_FILE_NAME
-    if not env_path.exists():
-        env_path.touch(mode=0o600)
-    set_key(str(env_path), key, value)
+def set_env_variable(var, value, verbose=True):
+    # type: (str, str, bool) -> None
+    """Write var=value into .conf.env, creating the file if needed."""
+    env_file = ensure_env_file(CLIENT_CONFIG)
+    set_key(str(env_file), var, value)
+    if verbose:
+        print("Set {} in {}".format(var, ENV_FILE_NAME))
 
 
 def fetch_config(
-    name,            # type: str
-    server_url=None, # type: Optional[str]
-    api_token=None,  # type: Optional[str]
-    ca_cert=None,    # type: Optional[str]
+    name,             # type: str
+    server_url=None,  # type: Optional[str]
+    api_token=None,   # type: Optional[str]
+    ca_cert=None,     # type: Optional[str]
 ):
     # type: (...) -> Tuple[str, str, str]
     """
-    Fetch a configuration from the server.
+    Fetch a named configuration from the server.
 
-    Returns (content, format_name, updated_at).
-    Raises requests.HTTPError on failure.
+    Returns a tuple of (content, format_name, updated_at). The content is
+    the raw configuration string exactly as stored on the server. The
+    format_name (e.g. 'yaml', 'json') and updated_at timestamp are read
+    from the response headers.
+
+    Raises ValueError for an empty name, requests.HTTPError on failure.
     """
+    if not name or str(name).strip() == "":
+        raise ValueError("Configuration name must not be empty")
+
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = resolve_server_config(server_url, api_token, ca_cert)
-    url = "{}/api/configs/{}/".format(server_url.rstrip("/"), name)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
+
+    url = f"{server_url.rstrip('/')}/api/configs/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
-    resp = api_get(url, headers=headers, verify=ca_cert or True)
-    resp.raise_for_status()
-    fmt = resp.headers.get("X-Ophix-Config-Format", "")
-    updated = resp.headers.get("X-Ophix-Config-Updated", "")
-    return resp.text, fmt, updated
+
+    response = api_get(url, headers=headers, verify=ca_cert or True)
+
+    if response.status_code == 404:
+        raise requests.HTTPError(f"Configuration '{name}' not found.", response=response)
+
+    response.raise_for_status()
+
+    content = response.text
+    format_name = response.headers.get("X-Ophix-Config-Format", "")
+    updated_at = response.headers.get("X-Ophix-Config-Updated", "")
+    return content, format_name, updated_at
 
 
 def create_config(
-    name,             # type: str
-    fmt,              # type: str
-    content,          # type: str
-    description=None, # type: Optional[str]
-    server_url=None,  # type: Optional[str]
-    api_token=None,   # type: Optional[str]
-    ca_cert=None,     # type: Optional[str]
+    name,              # type: str
+    format,            # type: str
+    content,           # type: str
+    description=None,  # type: Optional[str]
+    server_url=None,   # type: Optional[str]
+    api_token=None,    # type: Optional[str]
+    ca_cert=None,      # type: Optional[str]
 ):
-    # type: (...) -> None
-    """Create a new configuration on the server. Raises requests.HTTPError on failure."""
+    # type: (...) -> dict
+    """
+    Create a new configuration on the server.
+
+    Returns the server response dict. Raises requests.HTTPError on failure.
+    """
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = resolve_server_config(server_url, api_token, ca_cert)
-    url = "{}/api/configs/{}/".format(server_url.rstrip("/"), name)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
+
+    url = f"{server_url.rstrip('/')}/api/configs/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
-    payload = {"format": fmt, "content": content}
-    if description:
+
+    payload = {"format_name": format, "content": content}
+    if description is not None:
         payload["description"] = description
-    resp = api_post(url, headers=headers, json=payload, verify=ca_cert or True)
-    resp.raise_for_status()
+
+    try:
+        resp = api_post(url, headers=headers, json=payload, verify=ca_cert or True)
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        try:
+            err_json = resp.json()
+            server_msg = err_json.get("detail") or err_json.get("error") or str(err_json)
+        except Exception:
+            server_msg = resp.text.strip() or str(e)
+        raise requests.HTTPError(
+            f"Failed to create configuration '{name}': {server_msg}",
+            response=resp,
+        ) from e
+
+    return resp.json()
 
 
 def update_config(
+    name,              # type: str
+    format,            # type: str
+    content,           # type: str
+    description=None,  # type: Optional[str]
+    server_url=None,   # type: Optional[str]
+    api_token=None,    # type: Optional[str]
+    ca_cert=None,      # type: Optional[str]
+):
+    # type: (...) -> dict
+    """
+    Overwrite an existing configuration.
+
+    Requires `can_update` on the ClientConfiguration join record.
+    Returns the updated configuration dict. Raises requests.HTTPError on failure.
+    """
+    set_active_config(CLIENT_CONFIG)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
+
+    url = f"{server_url.rstrip('/')}/api/configs/{name}/"
+    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
+
+    payload = {"format_name": format, "content": content}
+    if description is not None:
+        payload["description"] = description
+
+    try:
+        resp = api_put(url, headers=headers, json=payload, verify=ca_cert or True)
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        try:
+            err_json = resp.json()
+            server_msg = err_json.get("detail") or err_json.get("error") or str(err_json)
+        except Exception:
+            server_msg = resp.text.strip() or str(e)
+        raise requests.HTTPError(
+            f"Failed to update configuration '{name}': {server_msg}",
+            response=resp,
+        ) from e
+
+    return resp.json()
+
+
+def delete_config(
     name,             # type: str
-    fmt,              # type: str
-    content,          # type: str
-    description=None, # type: Optional[str]
     server_url=None,  # type: Optional[str]
     api_token=None,   # type: Optional[str]
     ca_cert=None,     # type: Optional[str]
 ):
-    # type: (...) -> None
-    """Update an existing configuration on the server. Raises requests.HTTPError on failure."""
+    # type: (...) -> dict
+    """
+    Delete a configuration.
+
+    Requires `can_delete` on the join record and `ENABLE_ARTIFACT_DELETE=true`
+    on the server. Returns the server response dict. Raises requests.HTTPError
+    on failure.
+    """
     set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = resolve_server_config(server_url, api_token, ca_cert)
-    url = "{}/api/configs/{}/".format(server_url.rstrip("/"), name)
+    server_url, api_token, ca_cert = resolve_server_config(
+        CLIENT_CONFIG, server_url, api_token, ca_cert
+    )
+    url = f"{server_url.rstrip('/')}/api/configs/{name}/"
     headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
-    payload = {"format": fmt, "content": content}
-    if description:
-        payload["description"] = description
-    resp = api_put(url, headers=headers, json=payload, verify=ca_cert or True)
-    resp.raise_for_status()
+
+    try:
+        resp = api_delete(url, headers=headers, verify=ca_cert or True)
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        try:
+            err_json = resp.json()
+            server_msg = err_json.get("detail") or err_json.get("error") or str(err_json)
+        except Exception:
+            server_msg = resp.text.strip() or str(e)
+        raise requests.HTTPError(
+            f"Failed to delete configuration '{name}': {server_msg}",
+            response=resp,
+        ) from e
+
+    return resp.json()
 
 
-def delete_config(
-    name,            # type: str
-    server_url=None, # type: Optional[str]
-    api_token=None,  # type: Optional[str]
-    ca_cert=None,    # type: Optional[str]
-):
-    # type: (...) -> None
-    """Delete a configuration from the server. Raises requests.HTTPError on failure."""
-    set_active_config(CLIENT_CONFIG)
-    server_url, api_token, ca_cert = resolve_server_config(server_url, api_token, ca_cert)
-    url = "{}/api/configs/{}/".format(server_url.rstrip("/"), name)
-    headers = build_client_headers(CLIENT_CONFIG, api_token=api_token)
-    resp = api_delete(url, headers=headers, verify=ca_cert or True)
-    resp.raise_for_status()
-
-
-def get_conf(env_var_name):
+def get_config(env_var_name):
     # type: (str) -> str
     """
-    Tier 2 entry point — retrieve configuration content using an environment variable.
+    Tier 2 entry point — retrieve a configuration's raw content using an
+    environment variable.
 
-    Looks up the configuration name from the named env var, fetches the content
-    from the server, and returns it as a string.
+    Looks up the configuration name from the named env var, then fetches
+    and returns its raw content string.
 
     Example::
 
-        from conf_client.core import get_conf
-        nginx_conf = get_conf("MY_NGINX_CONFIG")
-    """
-    resolve_server_config()  # triggers .conf.env load
+        from conf_client import get_config
+        nginx_conf = get_config("NGINX_CONFIG_NAME")
 
-    conf_name = os.getenv(env_var_name)
-    if not conf_name:
-        print("Environment variable {} not set. Aborting.".format(env_var_name))
+    Exits via sys.exit(1) on any failure so Tier 2 callers don't need to
+    handle exceptions.
+    """
+    set_active_config(CLIENT_CONFIG)
+    resolve_server_config(
+        CLIENT_CONFIG,
+        ignore_missing_keys=[
+            CLIENT_CONFIG.server_url_key,
+            CLIENT_CONFIG.api_token_key,
+            CLIENT_CONFIG.ca_cert_key,
+        ],
+    )
+
+    config_name = os.getenv(env_var_name)
+    if not config_name:
+        print(f"Environment variable '{env_var_name}' is not set. Aborting.")
         sys.exit(1)
 
     try:
-        content, _, _ = fetch_config(conf_name)
+        content, _, _ = fetch_config(config_name)
         return content
-    except Exception as e:
-        print("Failed to fetch configuration '{}' from configuration server: {}".format(conf_name, e))
+    except Exception as exc:
+        print(f"Failed to fetch configuration '{config_name}': {exc}")
         sys.exit(1)
